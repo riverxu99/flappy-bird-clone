@@ -28,24 +28,23 @@ export function checkPipeCollision(
   birdY: number,
   birdSize: number,
   pipe: Pipe,
-  canvasHeight: number,
-  groundHeight: number,
 ): boolean {
-  const bx1 = birdX + 4
-  const bx2 = birdX + birdSize - 4
-  const by1 = birdY + 4
-  const by2 = birdY + birdSize - 4
-  const px1 = pipe.x
-  const px2 = pipe.x + PIPE_WIDTH
+  // birdX/birdY are the visual center of the bird.
+  // Use an inset circle so the hitbox is slightly smaller than the sprite,
+  // which feels fair without letting the bird visually clip through pipes.
+  const r = birdSize / 2   // 15
+  const inset = 4
+  const bx1 = birdX - r + inset   // center − 11
+  const bx2 = birdX + r - inset   // center + 11
+  const by1 = birdY - r + inset
+  const by2 = birdY + r - inset
 
-  if (bx2 < px1 || bx1 > px2) return false
+  // no horizontal overlap → no collision
+  if (bx2 <= pipe.x || bx1 >= pipe.x + PIPE_WIDTH) return false
 
+  // inside the gap → safe
   const bottomPipeY = pipe.topHeight + PIPE_GAP
-  if (by1 < pipe.topHeight || by2 > bottomPipeY) return true
-
-  if (by2 > canvasHeight - groundHeight) return true
-
-  return false
+  return by1 < pipe.topHeight || by2 > bottomPipeY
 }
 
 export function markScored(pipes: Pipe[], birdX: number): { pipes: Pipe[]; scored: boolean } {

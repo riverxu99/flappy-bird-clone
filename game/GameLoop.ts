@@ -234,7 +234,7 @@ export class GameLoop {
     if (scored) this.onScore()
 
     for (const pipe of this.pipes) {
-      if (checkPipeCollision(BIRD_X, this.bird.y, BIRD_SIZE, pipe, this.H - GROUND_HEIGHT, GROUND_HEIGHT)) {
+      if (checkPipeCollision(BIRD_X, this.bird.y, BIRD_SIZE, pipe)) {
         this.triggerDead()
         return
       }
