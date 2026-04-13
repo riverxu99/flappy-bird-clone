@@ -1,9 +1,13 @@
+import type { Difficulty } from '../store/useGameStore'
+
 interface Props {
   bestScore: number
+  difficulty: Difficulty
+  onDifficulty: (d: Difficulty) => void
   onStart: () => void
 }
 
-export default function StartScreen({ bestScore, onStart }: Props) {
+export default function StartScreen({ bestScore, difficulty, onDifficulty, onStart }: Props) {
   return (
     <div style={{
       position: 'absolute',
@@ -38,10 +42,42 @@ export default function StartScreen({ bestScore, onStart }: Props) {
         </p>
       )}
 
+      {/* Difficulty toggle */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 28 }}>
+        {(['easy', 'hard'] as Difficulty[]).map((d) => {
+          const active = difficulty === d
+          return (
+            <button
+              key={d}
+              onClick={() => onDifficulty(d)}
+              style={{
+                padding: '7px 22px',
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: 1.5,
+                borderRadius: 8,
+                border: active ? 'none' : '1px solid rgba(255,255,255,0.25)',
+                cursor: 'pointer',
+                userSelect: 'none',
+                color: active ? '#1a1a2e' : 'rgba(255,255,255,0.55)',
+                background: active
+                  ? (d === 'hard' ? '#e05555' : '#f5c542')
+                  : 'rgba(255,255,255,0.08)',
+                boxShadow: active
+                  ? `0 3px 0 ${d === 'hard' ? '#a03030' : '#c8960a'}`
+                  : 'none',
+              }}
+            >
+              {d.toUpperCase()}
+            </button>
+          )
+        })}
+      </div>
+
       <button
         onClick={onStart}
         style={{
-          marginTop: 32,
+          marginTop: 20,
           padding: '12px 40px',
           fontSize: 20,
           fontWeight: 800,

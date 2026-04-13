@@ -12,7 +12,7 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const loopRef = useRef<GameLoop | null>(null)
-  const { state, addScore, endGame, startGame } = useGameStore()
+  const { state, addScore, endGame, startGame, difficulty } = useGameStore()
   const stateRef = useRef(state)
   stateRef.current = state
 
@@ -40,9 +40,9 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
   useEffect(() => {
     const loop = loopRef.current
     if (!loop) return
-    if (state === 'playing') loop.start()
+    if (state === 'playing') loop.start(difficulty)
     if (state === 'idle') loop.pause()
-  }, [state])
+  }, [state, difficulty])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {

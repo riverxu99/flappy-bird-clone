@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 export type GameState = 'idle' | 'playing' | 'dead'
+export type Difficulty = 'easy' | 'hard'
 
 interface GameStore {
   state: GameState
@@ -8,12 +9,14 @@ interface GameStore {
   bestScore: number
   muted: boolean
   isNewBest: boolean
+  difficulty: Difficulty
   startGame: () => void
   endGame: () => void
   addScore: () => void
   retryGame: () => void
   goMenu: () => void
   toggleMute: () => void
+  setDifficulty: (d: Difficulty) => void
 }
 
 const loadBest = (): number => {
@@ -29,6 +32,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   bestScore: loadBest(),
   muted: false,
   isNewBest: false,
+  difficulty: 'easy',
 
   startGame: () => set({ state: 'playing', score: 0, isNewBest: false }),
 
@@ -46,4 +50,5 @@ export const useGameStore = create<GameStore>((set, get) => ({
   goMenu: () => set({ state: 'idle', score: 0, isNewBest: false }),
 
   toggleMute: () => set((s) => ({ muted: !s.muted })),
+  setDifficulty: (difficulty) => set({ difficulty }),
 }))

@@ -38,6 +38,7 @@ export class GameLoop {
   private lastPipeTime = 0
   private running = false
   private dead = false
+  private difficulty: 'easy' | 'hard' = 'easy'
 
   private onScore!: () => void
   private onDead!: () => void
@@ -152,11 +153,13 @@ export class GameLoop {
   private drawPipe(pipe: Pipe): Container {
     const c = new Container()
     const bottomY = pipe.topHeight + PIPE_GAP
+    // overflow ensures pipes always fill to canvas edges even when oscillating
+    const overflow = this.H
 
     const topBody = new Graphics()
     topBody.lineStyle(2, PIPE_BORDER)
     topBody.beginFill(PIPE_COLOR)
-    topBody.drawRect(0, 0, PIPE_WIDTH, pipe.topHeight - 14)
+    topBody.drawRect(0, -overflow, PIPE_WIDTH, overflow + pipe.topHeight - 14)
     topBody.endFill()
     topBody.lineStyle(2, PIPE_BORDER)
     topBody.beginFill(PIPE_COLOR)
@@ -170,7 +173,7 @@ export class GameLoop {
     botBody.endFill()
     botBody.lineStyle(2, PIPE_BORDER)
     botBody.beginFill(PIPE_COLOR)
-    botBody.drawRect(0, bottomY + 14, PIPE_WIDTH, this.H - bottomY - 14 - GROUND_HEIGHT)
+    botBody.drawRect(0, bottomY + 14, PIPE_WIDTH, overflow)
     botBody.endFill()
 
     c.addChild(topBody, botBody)
@@ -178,7 +181,8 @@ export class GameLoop {
     return c
   }
 
-  start() {
+  start(difficulty: 'easy' | 'hard' = 'easy') {
+    this.difficulty = difficulty
     this.bird = createBird(this.H - GROUND_HEIGHT)
     this.pipes = []
     this.pipeIdCounter = 0
@@ -212,7 +216,7 @@ export class GameLoop {
     this.bird = updateBird(this.bird)
 
     if (now - this.lastPipeTime > PIPE_SPAWN_INTERVAL) {
-      const pipe = createPipe(this.W, this.H - GROUND_HEIGHT, this.pipeIdCounter++)
+      const pipe = createPipe(this.W, this.H - GROUND_HEIGHT, this.pipeIdCounter++, this.difficulty === 'hard')
       this.pipes.push(pipe)
       const g = this.drawPipe(pipe)
       this.pipeGraphics.set(pipe.id, g)
@@ -225,7 +229,7 @@ export class GameLoop {
     this.pipeGraphics.forEach((g, id) => {
       const pipe = this.pipes.find((p) => p.id === id)
       if (!pipe) { this.pipeContainer.removeChild(g); removed.push(id) }
-      else g.x = pipe.x
+      else { g.x = pipe.x; g.y = pipe.yOffset }
     })
     removed.forEach((id) => this.pipeGraphics.delete(id))
 

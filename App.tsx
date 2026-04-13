@@ -15,7 +15,7 @@ const sounds = {
 }
 
 export default function App() {
-  const { state, score, bestScore, muted, isNewBest, startGame, retryGame, goMenu, toggleMute } = useGameStore()
+  const { state, score, bestScore, muted, isNewBest, difficulty, startGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
 
   useEffect(() => {
     sounds.flap.mute(muted)
@@ -35,7 +35,7 @@ export default function App() {
         <ScoreBoard score={score} bestScore={bestScore} visible={state === 'playing'} />
 
         {state === 'idle' && (
-          <StartScreen bestScore={bestScore} onStart={startGame} />
+          <StartScreen bestScore={bestScore} difficulty={difficulty} onDifficulty={setDifficulty} onStart={startGame} />
         )}
 
         {state === 'dead' && (
