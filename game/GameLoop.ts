@@ -5,7 +5,7 @@ import {
 } from './Bird'
 import {
   type Pipe, createPipe, updatePipes, checkPipeCollision,
-  markScored, PIPE_WIDTH, PIPE_GAP, PIPE_SPAWN_INTERVAL,
+  markScored, PIPE_WIDTH, PIPE_GAP, PIPE_SPAWN_INTERVAL, PIPE_SPEED,
 } from './Pipe'
 
 const GROUND_HEIGHT = 60
@@ -20,7 +20,23 @@ const BIRD_EYE = 0xffffff
 const BIRD_PUPIL = 0x222222
 const BIRD_BEAK = 0xe07820
 
+// Bird queue settings
+const FOLLOWER_GAP = 32        // horizontal px between each bird in the chain
+const SPACING_FRAMES = 11      // how many frames behind each follower trails
+const MAX_HISTORY = 280        // max entries in position history ring buffer
+const INVINCIBLE_FRAMES = 180  // ~3s of invincibility after a hit
+
+// Dot settings — one dot per pipe gap, placed at the horizontal midpoint
+const DOT_RADIUS = 7
+const DOT_COLOR = 0xffdd00
+const DOT_GLOW = 0xff9900
+
+// Falling bird animation
+const FALL_GRAVITY = 0.7        // extra gravity on ejected birds
+
 interface CloudData { x: number; y: number; w: number; speed: number }
+interface DotData { id: number; x: number; y: number }
+interface FallingBirdData { x: number; y: number; vy: number; rot: number; gfx: Container }
 
 export class GameLoop {
   private app: Application
@@ -31,6 +47,9 @@ export class GameLoop {
   private pipeGraphics: Map<number, Container> = new Map()
   private clouds: CloudData[] = []
   private cloudGfx!: Container
+  private dotContainer!: Container
+  private followerContainer!: Container
+  private fallingBirdContainer!: Container
 
   private bird!: BirdState
   private pipes: Pipe[] = []
@@ -39,6 +58,23 @@ export class GameLoop {
   private running = false
   private dead = false
   private difficulty: 'easy' | 'hard' = 'easy'
+
+  // --- Bird queue ---
+  private birdQueue = 1              // total birds alive (leader + followers)
+  private posHistory: number[] = []  // y-position history of the leader
+  private followerGfxList: Container[] = []
+
+  // --- Falling bird animations ---
+  private fallingBirds: FallingBirdData[] = []
+
+  // --- Invincibility ---
+  private invincible = false
+  private invincibleTimer = 0
+
+  // --- Dots ---
+  private dots: DotData[] = []
+  private dotGfxMap: Map<number, Graphics> = new Map()
+  private dotIdCounter = 0
 
   private onScore!: () => void
   private onDead!: () => void
@@ -69,8 +105,18 @@ export class GameLoop {
     this.drawGround()
     this.app.stage.addChild(this.groundGfx)
 
+    this.dotContainer = new Container()
+    this.app.stage.addChild(this.dotContainer)
+
+    this.followerContainer = new Container()
+    this.app.stage.addChild(this.followerContainer)
+
     this.birdGfx = this.makeBirdGfx()
     this.app.stage.addChild(this.birdGfx)
+
+    // Falling birds render above everything so they fall through ground visually
+    this.fallingBirdContainer = new Container()
+    this.app.stage.addChild(this.fallingBirdContainer)
   }
 
   private drawBg() {
@@ -150,6 +196,25 @@ export class GameLoop {
     return c
   }
 
+  private makeDotGfx(x: number, y: number): Graphics {
+    const g = new Graphics()
+    // Soft glow ring
+    g.beginFill(DOT_GLOW, 0.35)
+    g.drawCircle(0, 0, DOT_RADIUS + 4)
+    g.endFill()
+    // Main body
+    g.beginFill(DOT_COLOR)
+    g.drawCircle(0, 0, DOT_RADIUS)
+    g.endFill()
+    // Highlight
+    g.beginFill(0xffffff, 0.75)
+    g.drawCircle(-2, -2, 3)
+    g.endFill()
+    g.x = x
+    g.y = y
+    return g
+  }
+
   private drawPipe(pipe: Pipe): Container {
     const c = new Container()
     const bottomY = pipe.topHeight + PIPE_GAP
@@ -189,6 +254,24 @@ export class GameLoop {
     this.lastPipeTime = performance.now()
     this.running = true
     this.dead = false
+
+    // Reset bird queue
+    this.birdQueue = 1
+    this.posHistory = []
+    this.followerGfxList.forEach(g => this.followerContainer.removeChild(g))
+    this.followerGfxList = []
+    this.fallingBirds.forEach(fb => this.fallingBirdContainer.removeChild(fb.gfx))
+    this.fallingBirds = []
+    this.invincible = false
+    this.invincibleTimer = 0
+    this.birdGfx.visible = true
+
+    // Reset dots
+    this.dotGfxMap.forEach(g => this.dotContainer.removeChild(g))
+    this.dotGfxMap.clear()
+    this.dots = []
+    this.dotIdCounter = 0
+
     this.pipeGraphics.forEach((g) => this.pipeContainer.removeChild(g))
     this.pipeGraphics.clear()
     this.app.ticker.add(this.tick, this)
@@ -215,7 +298,20 @@ export class GameLoop {
 
     this.bird = updateBird(this.bird)
 
+    // Record leader y in history
+    this.posHistory.push(this.bird.y)
+    if (this.posHistory.length > MAX_HISTORY) this.posHistory.shift()
+
+    // --- Spawn pipes ---
     if (now - this.lastPipeTime > PIPE_SPAWN_INTERVAL) {
+      // Place a dot at the x midpoint between the previous pipe and this new one.
+      // The previous pipe is the rightmost one currently on screen.
+      if (this.pipes.length > 0) {
+        const prevPipe = this.pipes.reduce((max, p) => p.x > max.x ? p : max, this.pipes[0])
+        const dotX = (this.W + prevPipe.x) / 2
+        this.spawnDotAt(dotX, prevPipe)
+      }
+
       const pipe = createPipe(this.W, this.H - GROUND_HEIGHT, this.pipeIdCounter++, this.difficulty === 'hard')
       this.pipes.push(pipe)
       const g = this.drawPipe(pipe)
@@ -224,6 +320,7 @@ export class GameLoop {
       this.lastPipeTime = now
     }
 
+    // --- Update pipes ---
     const removed: number[] = []
     this.pipes = updatePipes(this.pipes)
     this.pipeGraphics.forEach((g, id) => {
@@ -233,21 +330,60 @@ export class GameLoop {
     })
     removed.forEach((id) => this.pipeGraphics.delete(id))
 
+    // --- Score ---
     const { pipes: scoredPipes, scored } = markScored(this.pipes, BIRD_X)
     this.pipes = scoredPipes
     if (scored) this.onScore()
 
-    for (const pipe of this.pipes) {
-      if (checkPipeCollision(BIRD_X, this.bird.y, BIRD_SIZE, pipe)) {
-        this.triggerDead()
+    // --- Collision detection (skipped during invincibility) ---
+    if (!this.invincible) {
+      let hit = false
+      for (const pipe of this.pipes) {
+        if (checkPipeCollision(BIRD_X, this.bird.y, BIRD_SIZE, pipe)) {
+          hit = true
+          break
+        }
+      }
+      if (!hit && isBirdOutOfBounds(this.bird, this.H - GROUND_HEIGHT)) {
+        hit = true
+      }
+      if (hit) {
+        this.handleHit()
         return
       }
-    }
-    if (isBirdOutOfBounds(this.bird, this.H - GROUND_HEIGHT)) {
-      this.triggerDead()
-      return
+    } else {
+      this.invincibleTimer++
+      if (this.invincibleTimer >= INVINCIBLE_FRAMES) {
+        this.invincible = false
+        this.birdGfx.visible = true
+      }
     }
 
+    // --- Update and collect dots ---
+    const toRemove: number[] = []
+    for (const dot of this.dots) {
+      dot.x -= PIPE_SPEED
+      const gfx = this.dotGfxMap.get(dot.id)
+      if (gfx) gfx.x = dot.x
+
+      // Collection check: circle vs circle
+      const dx = dot.x - BIRD_X
+      const dy = dot.y - this.bird.y
+      if (Math.sqrt(dx * dx + dy * dy) < DOT_RADIUS + BIRD_SIZE / 2) {
+        toRemove.push(dot.id)
+        this.addFollower()
+      } else if (dot.x < -20) {
+        toRemove.push(dot.id)
+      }
+    }
+    for (const id of toRemove) {
+      const gfx = this.dotGfxMap.get(id)
+      if (gfx) this.dotContainer.removeChild(gfx)
+      this.dotGfxMap.delete(id)
+    }
+    this.dots = this.dots.filter(d => !toRemove.includes(d.id))
+
+    // --- Update clouds ---
     this.clouds.forEach((cloud, i) => {
       cloud.x -= cloud.speed
       const gfx = this.cloudGfx.children[i] as Graphics
@@ -258,16 +394,104 @@ export class GameLoop {
       }
     })
 
+    // --- Animate falling ejected birds ---
+    this.fallingBirds = this.fallingBirds.filter(fb => {
+      fb.vy += FALL_GRAVITY
+      fb.y += fb.vy
+      fb.rot += 0.12
+      fb.gfx.y = fb.y
+      fb.gfx.rotation = fb.rot
+      if (fb.y > this.H + 60) {
+        this.fallingBirdContainer.removeChild(fb.gfx)
+        return false
+      }
+      return true
+    })
+
+    // --- Render main bird ---
     this.birdGfx.x = BIRD_X
     this.birdGfx.y = this.bird.y
     this.birdGfx.rotation = (this.bird.rotation * Math.PI) / 180
+    // Flicker during invincibility
+    if (this.invincible) {
+      this.birdGfx.visible = Math.floor(this.invincibleTimer / 5) % 2 === 0
+    }
+
+    // --- Render follower birds ---
+    for (let i = 0; i < this.followerGfxList.length; i++) {
+      const delay = (i + 1) * SPACING_FRAMES
+      const histIdx = this.posHistory.length - 1 - delay
+      const followerY = histIdx >= 0 ? this.posHistory[histIdx] : this.bird.y
+      this.followerGfxList[i].x = BIRD_X - (i + 1) * FOLLOWER_GAP
+      this.followerGfxList[i].y = followerY
+      this.followerGfxList[i].rotation = 0
+    }
   }
 
-  private triggerDead() {
-    this.dead = true
-    this.running = false
-    this.app.ticker.remove(this.tick, this)
-    this.onDead()
+  // Called when a collision happens. Ejects the frontmost bird with a falling
+  // animation. If more birds remain, the first follower becomes the new leader.
+  // Game ends only when the last bird is ejected.
+  private handleHit() {
+    // Create falling animation for the current leader
+    const fallingGfx = this.makeBirdGfx()
+    fallingGfx.x = BIRD_X
+    fallingGfx.y = this.bird.y
+    fallingGfx.rotation = (this.bird.rotation * Math.PI) / 180
+    this.fallingBirdContainer.addChild(fallingGfx)
+    this.fallingBirds.push({
+      x: BIRD_X,
+      y: this.bird.y,
+      vy: Math.max(this.bird.vy, 4), // ensure it always falls downward
+      rot: fallingGfx.rotation,
+      gfx: fallingGfx,
+    })
+
+    if (this.birdQueue > 1) {
+      this.birdQueue--
+
+      // Promote first follower: take its position from history
+      const histIdx = this.posHistory.length - 1 - SPACING_FRAMES
+      const newY = histIdx >= 0 ? this.posHistory[histIdx] : this.bird.y
+      const playH = this.H - GROUND_HEIGHT
+      const clampedY = Math.max(BIRD_SIZE / 2 + 4, Math.min(playH - BIRD_SIZE / 2 - 4, newY))
+      this.bird = { y: clampedY, vy: 0, rotation: 0 }
+
+      // Remove the promoted follower's graphic (it is now the main bird)
+      const promoted = this.followerGfxList.shift()!
+      this.followerContainer.removeChild(promoted)
+
+      // Clear history so followers re-anchor to the new leader
+      this.posHistory = []
+
+      // Grant invincibility so the player has time to recover
+      this.invincible = true
+      this.invincibleTimer = 0
+    } else {
+      // Last bird — real game over
+      this.dead = true
+      this.running = false
+      this.app.ticker.remove(this.tick, this)
+      this.onDead()
+    }
+  }
+
+  private addFollower() {
+    this.birdQueue++
+    const gfx = this.makeBirdGfx()
+    this.followerContainer.addChild(gfx)
+    this.followerGfxList.push(gfx)
+  }
+
+  private spawnDotAt(x: number, nearPipe: Pipe) {
+    const inset = 20  // keep dot away from pipe rim edges
+    const gapTop = nearPipe.topHeight + nearPipe.yOffset + inset
+    const gapBottom = nearPipe.topHeight + nearPipe.yOffset + PIPE_GAP - inset
+    const y = gapTop + Math.random() * (gapBottom - gapTop)
+    const id = this.dotIdCounter++
+    this.dots.push({ id, x, y })
+    const gfx = this.makeDotGfx(x, y)
+    this.dotContainer.addChild(gfx)
+    this.dotGfxMap.set(id, gfx)
   }
 
   destroy() {

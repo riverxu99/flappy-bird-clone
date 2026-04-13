@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Application } from 'pixi.js'
 import { GameLoop } from '../game/GameLoop'
 import { useGameStore } from '../store/useGameStore'
+import { playFlap } from '../game/audio'
 
 interface Props {
   width?: number
@@ -12,9 +13,11 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const loopRef = useRef<GameLoop | null>(null)
-  const { state, addScore, endGame, startGame, difficulty } = useGameStore()
+  const { state, addScore, endGame, startGame, difficulty, muted } = useGameStore()
   const stateRef = useRef(state)
   stateRef.current = state
+  const mutedRef = useRef(muted)
+  mutedRef.current = muted
 
   useEffect(() => {
     const app = new Application({
@@ -60,8 +63,8 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
 
   const handleFlap = () => {
     const s = stateRef.current
-    if (s === 'idle') { startGame(); return }
-    if (s === 'playing') loopRef.current?.flap()
+    if (s === 'idle') { startGame(); playFlap(mutedRef.current); return }
+    if (s === 'playing') { loopRef.current?.flap(); playFlap(mutedRef.current) }
   }
 
   return (
