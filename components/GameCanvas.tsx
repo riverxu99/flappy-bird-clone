@@ -48,10 +48,10 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
     const handleKey = (e: KeyboardEvent) => {
       if (e.code === 'Space') handleFlap()
     }
-    const handleTouch = () => handleFlap()
+    const handleTouch = (e: TouchEvent) => { e.preventDefault(); handleFlap() }
     window.addEventListener('keydown', handleKey)
     const el = canvasRef.current
-    el?.addEventListener('touchstart', handleTouch)
+    el?.addEventListener('touchstart', handleTouch, { passive: false })
     return () => {
       window.removeEventListener('keydown', handleKey)
       el?.removeEventListener('touchstart', handleTouch)
