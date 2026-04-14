@@ -370,12 +370,17 @@ export class GameLoop {
       }
     } else {
       this.invincibleTimer++
+      const groundY = (this.H - GROUND_HEIGHT) - BIRD_SIZE / 2
       if (this.invincibleTimer >= INVINCIBLE_FRAMES) {
         this.invincible = false
         this.birdGfx.visible = true
+        // If the bird is still on the ground when invincibility ends, push it upward
+        // so the normal collision check doesn't immediately re-trigger next frame.
+        if (this.bird.y >= groundY - 1) {
+          this.bird = { ...this.bird, y: groundY - 2, vy: -3 }
+        }
       }
       // Clamp bird to play area during invincibility so it can't fall through the ground
-      const groundY = (this.H - GROUND_HEIGHT) - BIRD_SIZE / 2
       if (this.bird.y > groundY) {
         this.bird = { ...this.bird, y: groundY, vy: 0 }
       }
@@ -418,13 +423,14 @@ export class GameLoop {
     })
 
     // --- Animate falling ejected birds ---
+    const groundLine = this.H - GROUND_HEIGHT
     this.fallingBirds = this.fallingBirds.filter(fb => {
       fb.vy += FALL_GRAVITY
       fb.y += fb.vy
       fb.rot += 0.12
       fb.gfx.y = fb.y
       fb.gfx.rotation = fb.rot
-      if (fb.y > this.H + 60) {
+      if (fb.y + BIRD_SIZE / 2 > groundLine || fb.y > this.H + 60) {
         this.fallingBirdContainer.removeChild(fb.gfx)
         return false
       }
@@ -460,19 +466,23 @@ export class GameLoop {
   // animation. If more birds remain, the first follower becomes the new leader.
   // Game ends only when the last bird is ejected.
   private handleHit() {
-    // Create falling animation for the current leader
-    const fallingGfx = this.makeBirdGfx()
-    fallingGfx.x = BIRD_X
-    fallingGfx.y = this.bird.y
-    fallingGfx.rotation = (this.bird.rotation * Math.PI) / 180
-    this.fallingBirdContainer.addChild(fallingGfx)
-    this.fallingBirds.push({
-      x: BIRD_X,
-      y: this.bird.y,
-      vy: Math.max(this.bird.vy, 4), // ensure it always falls downward
-      rot: fallingGfx.rotation,
-      gfx: fallingGfx,
-    })
+    // Only create falling animation for pipe hits (bird is above ground).
+    // Ground hits: bird is already at floor level — skip to avoid a one-frame ghost overlap.
+    const atGround = this.bird.y + BIRD_SIZE / 2 > this.H - GROUND_HEIGHT
+    if (!atGround) {
+      const fallingGfx = this.makeBirdGfx()
+      fallingGfx.x = BIRD_X
+      fallingGfx.y = this.bird.y
+      fallingGfx.rotation = (this.bird.rotation * Math.PI) / 180
+      this.fallingBirdContainer.addChild(fallingGfx)
+      this.fallingBirds.push({
+        x: BIRD_X,
+        y: this.bird.y,
+        vy: Math.max(this.bird.vy, 4),
+        rot: fallingGfx.rotation,
+        gfx: fallingGfx,
+      })
+    }
 
     if (this.birdQueue > 1) {
       this.onHit?.()
