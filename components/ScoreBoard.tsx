@@ -13,9 +13,8 @@ export default function ScoreBoard({ score, bestScore, visible }: Props) {
       left: 0,
       right: 0,
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      padding: '0 16px',
+      flexDirection: 'column',
+      alignItems: 'center',
       pointerEvents: 'none',
       zIndex: 10,
     }}>

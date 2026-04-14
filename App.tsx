@@ -1,6 +1,7 @@
 import GameCanvas from './components/GameCanvas'
 import ScoreBoard from './components/ScoreBoard'
 import AudioToggle from './components/AudioToggle'
+import BirdCounter from './components/BirdCounter'
 import StartScreen from './components/StartScreen'
 import GameOverScreen from './components/GameOverScreen'
 import { useGameStore } from './store/useGameStore'
@@ -9,7 +10,7 @@ const CANVAS_W = 400
 const CANVAS_H = 600
 
 export default function App() {
-  const { state, score, bestScore, muted, isNewBest, difficulty, startGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
+  const { state, score, bestScore, muted, isNewBest, difficulty, birdCount, startGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
 
   return (
     <div style={{
@@ -23,6 +24,7 @@ export default function App() {
         <GameCanvas width={CANVAS_W} height={CANVAS_H} />
 
         <ScoreBoard score={score} bestScore={bestScore} visible={state === 'playing'} />
+        <BirdCounter count={birdCount} visible={state === 'playing'} />
 
         {state === 'idle' && (
           <StartScreen bestScore={bestScore} difficulty={difficulty} onDifficulty={setDifficulty} onStart={startGame} />

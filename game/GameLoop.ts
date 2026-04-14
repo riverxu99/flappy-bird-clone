@@ -82,6 +82,7 @@ export class GameLoop {
   private onDead!: () => void
   private onHit?: () => void
   private onPickup?: () => void
+  private onBirdCountChange?: (n: number) => void
 
   constructor(
     app: Application,
@@ -89,6 +90,7 @@ export class GameLoop {
     onDead: () => void,
     onHit?: () => void,
     onPickup?: () => void,
+    onBirdCountChange?: (n: number) => void,
   ) {
     this.app = app
     this.onScore = () => {
@@ -101,6 +103,7 @@ export class GameLoop {
     this.onDead = onDead
     this.onHit = onHit
     this.onPickup = onPickup
+    this.onBirdCountChange = onBirdCountChange
     this.buildScene()
   }
 
@@ -277,6 +280,7 @@ export class GameLoop {
 
     // Reset bird queue
     this.birdQueue = 1
+    this.onBirdCountChange?.(1)
     this.posHistory = []
     this.followerGfxList.forEach(g => this.followerContainer.removeChild(g))
     this.followerGfxList = []
@@ -468,6 +472,7 @@ export class GameLoop {
     if (this.birdQueue > 1) {
       this.onHit?.()
       this.birdQueue--
+      this.onBirdCountChange?.(this.birdQueue)
 
       // Promote first follower: place new leader at the vertical centre of the playable area
       const centreY = (this.H - GROUND_HEIGHT) / 2
@@ -494,6 +499,7 @@ export class GameLoop {
 
   private addFollower() {
     this.birdQueue++
+    this.onBirdCountChange?.(this.birdQueue)
     const gfx = this.makeBirdGfx()
     this.followerContainer.addChild(gfx)
     this.followerGfxList.push(gfx)

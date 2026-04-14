@@ -10,6 +10,7 @@ interface GameStore {
   muted: boolean
   isNewBest: boolean
   difficulty: Difficulty
+  birdCount: number
   startGame: () => void
   endGame: () => void
   addScore: () => void
@@ -17,6 +18,7 @@ interface GameStore {
   goMenu: () => void
   toggleMute: () => void
   setDifficulty: (d: Difficulty) => void
+  setBirdCount: (n: number) => void
 }
 
 const loadBest = (): number => {
@@ -33,8 +35,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   muted: false,
   isNewBest: false,
   difficulty: 'easy',
+  birdCount: 1,
 
-  startGame: () => set({ state: 'playing', score: 0, isNewBest: false }),
+  startGame: () => set({ state: 'playing', score: 0, isNewBest: false, birdCount: 1 }),
 
   endGame: () => {
     const { score, bestScore } = get()
@@ -45,10 +48,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   addScore: () => set((s) => ({ score: s.score + 1 })),
 
-  retryGame: () => set({ state: 'playing', score: 0, isNewBest: false }),
+  retryGame: () => set({ state: 'playing', score: 0, isNewBest: false, birdCount: 1 }),
 
   goMenu: () => set({ state: 'idle', score: 0, isNewBest: false }),
 
   toggleMute: () => set((s) => ({ muted: !s.muted })),
   setDifficulty: (difficulty) => set({ difficulty }),
+  setBirdCount: (birdCount) => set({ birdCount }),
 }))
