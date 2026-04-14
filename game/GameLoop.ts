@@ -370,6 +370,11 @@ export class GameLoop {
         this.invincible = false
         this.birdGfx.visible = true
       }
+      // Clamp bird to play area during invincibility so it can't fall through the ground
+      const groundY = (this.H - GROUND_HEIGHT) - BIRD_SIZE / 2
+      if (this.bird.y > groundY) {
+        this.bird = { ...this.bird, y: groundY, vy: 0 }
+      }
     }
 
     // --- Update and collect dots ---
