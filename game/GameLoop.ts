@@ -440,11 +440,16 @@ export class GameLoop {
       this.birdGfx.visible = Math.floor(this.invincibleTimer / 5) % 2 === 0
     }
 
-    // --- Render follower birds ---
+    // --- Render follower birds (max 4 shown; extras hidden) ---
     for (let i = 0; i < this.followerGfxList.length; i++) {
+      if (i >= 4) {
+        this.followerGfxList[i].visible = false
+        continue
+      }
       const delay = (i + 1) * SPACING_FRAMES
       const histIdx = this.posHistory.length - 1 - delay
       const followerY = histIdx >= 0 ? this.posHistory[histIdx] : this.bird.y
+      this.followerGfxList[i].visible = true
       this.followerGfxList[i].x = BIRD_X - (i + 1) * FOLLOWER_GAP
       this.followerGfxList[i].y = followerY
       this.followerGfxList[i].rotation = 0
@@ -474,16 +479,10 @@ export class GameLoop {
       this.birdQueue--
       this.onBirdCountChange?.(this.birdQueue)
 
-      // Promote first follower: place new leader at the vertical centre of the playable area
-      const centreY = (this.H - GROUND_HEIGHT) / 2
-      this.bird = { y: centreY, vy: 0, rotation: 0 }
-
       // Remove the promoted follower's graphic (it is now the main bird)
+      // Bird state (y, vy) is preserved so motion continues naturally
       const promoted = this.followerGfxList.shift()!
       this.followerContainer.removeChild(promoted)
-
-      // Clear history so followers re-anchor to the new leader
-      this.posHistory = []
 
       // Grant invincibility so the player has time to recover
       this.invincible = true

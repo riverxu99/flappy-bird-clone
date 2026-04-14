@@ -1,6 +1,6 @@
 export const GRAVITY = 0.5
 export const FLAP_FORCE = 9
-export const BIRD_X = 100
+export const BIRD_X = 140
 export const BIRD_SIZE = 30
 
 export interface BirdState {
