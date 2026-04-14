@@ -28,10 +28,10 @@ export function createPipe(
   return { id, x: canvasWidth, topHeight, yOffset: 0, ySpeed, scored: false }
 }
 
-export function updatePipes(pipes: Pipe[]): Pipe[] {
+export function updatePipes(pipes: Pipe[], speed = PIPE_SPEED): Pipe[] {
   return pipes
     .map((p) => {
-      const x = p.x - PIPE_SPEED
+      const x = p.x - speed
       let { yOffset, ySpeed } = p
       if (ySpeed !== 0) {
         yOffset += ySpeed

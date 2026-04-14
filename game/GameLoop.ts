@@ -58,6 +58,11 @@ export class GameLoop {
   private running = false
   private dead = false
   private difficulty: 'easy' | 'hard' = 'easy'
+  private score = 0
+  private currentSpeed = PIPE_SPEED
+
+  // --- Previous pipe reference (independent of pipes array for high-speed dot spawning) ---
+  private prevPipeInfo: { topHeight: number; yOffset: number; x: number } | null = null
 
   // --- Bird queue ---
   private birdQueue = 1              // total birds alive (leader + followers)
@@ -81,7 +86,13 @@ export class GameLoop {
 
   constructor(app: Application, onScore: () => void, onDead: () => void) {
     this.app = app
-    this.onScore = onScore
+    this.onScore = () => {
+      onScore()
+      this.score++
+      if (this.score % 5 === 0) {
+        this.currentSpeed = Math.min(this.currentSpeed + 0.5, 10)
+      }
+    }
     this.onDead = onDead
     this.buildScene()
   }
@@ -254,6 +265,9 @@ export class GameLoop {
     this.lastPipeTime = performance.now()
     this.running = true
     this.dead = false
+    this.score = 0
+    this.currentSpeed = PIPE_SPEED
+    this.prevPipeInfo = null
 
     // Reset bird queue
     this.birdQueue = 1
@@ -302,14 +316,18 @@ export class GameLoop {
     this.posHistory.push(this.bird.y)
     if (this.posHistory.length > MAX_HISTORY) this.posHistory.shift()
 
+    // Track previous pipe position independently (survives the pipes array filter)
+    if (this.prevPipeInfo) this.prevPipeInfo.x -= this.currentSpeed
+
     // --- Spawn pipes ---
     if (now - this.lastPipeTime > PIPE_SPAWN_INTERVAL) {
-      // Place a dot at the x midpoint between the previous pipe and this new one.
-      // The previous pipe is the rightmost one currently on screen.
-      if (this.pipes.length > 0) {
-        const prevPipe = this.pipes.reduce((max, p) => p.x > max.x ? p : max, this.pipes[0])
-        const dotX = (this.W + prevPipe.x) / 2
-        this.spawnDotAt(dotX, prevPipe)
+      // Dot at the midpoint between prev pipe and this new one.
+      // Uses prevPipeInfo so it works even at high speed when prev pipe is off-screen.
+      if (this.prevPipeInfo !== null) {
+        const rawMidX = (this.W + this.prevPipeInfo.x) / 2
+        // Guarantee enough lead time for the player to react at any speed
+        const dotX = Math.max(BIRD_X + this.currentSpeed * 40, rawMidX)
+        this.spawnDotAt(dotX, this.prevPipeInfo)
       }
 
       const pipe = createPipe(this.W, this.H - GROUND_HEIGHT, this.pipeIdCounter++, this.difficulty === 'hard')
@@ -318,11 +336,12 @@ export class GameLoop {
       this.pipeGraphics.set(pipe.id, g)
       this.pipeContainer.addChild(g)
       this.lastPipeTime = now
+      this.prevPipeInfo = { topHeight: pipe.topHeight, yOffset: 0, x: this.W }
     }
 
     // --- Update pipes ---
     const removed: number[] = []
-    this.pipes = updatePipes(this.pipes)
+    this.pipes = updatePipes(this.pipes, this.currentSpeed)
     this.pipeGraphics.forEach((g, id) => {
       const pipe = this.pipes.find((p) => p.id === id)
       if (!pipe) { this.pipeContainer.removeChild(g); removed.push(id) }
@@ -362,7 +381,7 @@ export class GameLoop {
     // --- Update and collect dots ---
     const toRemove: number[] = []
     for (const dot of this.dots) {
-      dot.x -= PIPE_SPEED
+      dot.x -= this.currentSpeed
       const gfx = this.dotGfxMap.get(dot.id)
       if (gfx) gfx.x = dot.x
 
@@ -449,12 +468,9 @@ export class GameLoop {
     if (this.birdQueue > 1) {
       this.birdQueue--
 
-      // Promote first follower: take its position from history
-      const histIdx = this.posHistory.length - 1 - SPACING_FRAMES
-      const newY = histIdx >= 0 ? this.posHistory[histIdx] : this.bird.y
-      const playH = this.H - GROUND_HEIGHT
-      const clampedY = Math.max(BIRD_SIZE / 2 + 4, Math.min(playH - BIRD_SIZE / 2 - 4, newY))
-      this.bird = { y: clampedY, vy: 0, rotation: 0 }
+      // Promote first follower: place new leader at the vertical centre of the playable area
+      const centreY = (this.H - GROUND_HEIGHT) / 2
+      this.bird = { y: centreY, vy: 0, rotation: 0 }
 
       // Remove the promoted follower's graphic (it is now the main bird)
       const promoted = this.followerGfxList.shift()!
@@ -482,7 +498,7 @@ export class GameLoop {
     this.followerGfxList.push(gfx)
   }
 
-  private spawnDotAt(x: number, nearPipe: Pipe) {
+  private spawnDotAt(x: number, nearPipe: Pick<Pipe, 'topHeight' | 'yOffset'>) {
     const inset = 20  // keep dot away from pipe rim edges
     const gapTop = nearPipe.topHeight + nearPipe.yOffset + inset
     const gapBottom = nearPipe.topHeight + nearPipe.yOffset + PIPE_GAP - inset
