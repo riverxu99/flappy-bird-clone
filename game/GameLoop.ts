@@ -83,8 +83,16 @@ export class GameLoop {
 
   private onScore!: () => void
   private onDead!: () => void
+  private onHit?: () => void
+  private onPickup?: () => void
 
-  constructor(app: Application, onScore: () => void, onDead: () => void) {
+  constructor(
+    app: Application,
+    onScore: () => void,
+    onDead: () => void,
+    onHit?: () => void,
+    onPickup?: () => void,
+  ) {
     this.app = app
     this.onScore = () => {
       onScore()
@@ -94,6 +102,8 @@ export class GameLoop {
       }
     }
     this.onDead = onDead
+    this.onHit = onHit
+    this.onPickup = onPickup
     this.buildScene()
   }
 
@@ -390,6 +400,7 @@ export class GameLoop {
       const dy = dot.y - this.bird.y
       if (Math.sqrt(dx * dx + dy * dy) < DOT_RADIUS + BIRD_SIZE / 2) {
         toRemove.push(dot.id)
+        this.onPickup?.()
         this.addFollower()
       } else if (dot.x < -20) {
         toRemove.push(dot.id)
@@ -466,6 +477,7 @@ export class GameLoop {
     })
 
     if (this.birdQueue > 1) {
+      this.onHit?.()
       this.birdQueue--
 
       // Promote first follower: place new leader at the vertical centre of the playable area

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Application } from 'pixi.js'
 import { GameLoop } from '../game/GameLoop'
 import { useGameStore } from '../store/useGameStore'
-import { playFlap } from '../game/audio'
+import { setMuted, playFlap, playHit, playDead, playPickup, playSelect } from '../game/audio'
 
 interface Props {
   width?: number
@@ -13,11 +13,13 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const loopRef = useRef<GameLoop | null>(null)
-  const { state, addScore, endGame, startGame, difficulty, muted } = useGameStore()
+  const { state, addScore, endGame, startGame, retryGame, difficulty, muted } = useGameStore()
   const stateRef = useRef(state)
   stateRef.current = state
-  const mutedRef = useRef(muted)
-  mutedRef.current = muted
+
+  useEffect(() => {
+    setMuted(muted)
+  }, [muted])
 
   useEffect(() => {
     const app = new Application({
@@ -31,7 +33,13 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
     appRef.current = app
     canvasRef.current?.appendChild(app.view as HTMLCanvasElement)
 
-    const loop = new GameLoop(app, addScore, endGame)
+    const loop = new GameLoop(
+      app,
+      addScore,
+      () => { endGame(); playDead() },
+      playHit,
+      playPickup,
+    )
     loopRef.current = loop
 
     return () => {
@@ -63,8 +71,9 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
 
   const handleFlap = () => {
     const s = stateRef.current
-    if (s === 'idle') { startGame(); playFlap(mutedRef.current); return }
-    if (s === 'playing') { loopRef.current?.flap(); playFlap(mutedRef.current) }
+    if (s === 'idle') { playSelect(); startGame(); playFlap(); return }
+    if (s === 'dead') { playSelect(); retryGame(); return }
+    if (s === 'playing') { loopRef.current?.flap(); playFlap() }
   }
 
   return (

@@ -1,4 +1,5 @@
 import type { Difficulty } from '../store/useGameStore'
+import { playSelect } from '../game/audio'
 
 interface Props {
   bestScore: number
@@ -49,7 +50,7 @@ export default function StartScreen({ bestScore, difficulty, onDifficulty, onSta
           return (
             <button
               key={d}
-              onClick={() => onDifficulty(d)}
+              onClick={() => { playSelect(); onDifficulty(d) }}
               style={{
                 padding: '7px 22px',
                 fontSize: 13,
@@ -75,7 +76,7 @@ export default function StartScreen({ bestScore, difficulty, onDifficulty, onSta
       </div>
 
       <button
-        onClick={onStart}
+        onClick={() => { playSelect(); onStart() }}
         style={{
           marginTop: 20,
           padding: '12px 40px',

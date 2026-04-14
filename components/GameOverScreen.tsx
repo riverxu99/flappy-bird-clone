@@ -1,3 +1,5 @@
+import { playSelect } from '../game/audio'
+
 interface Props {
   score: number
   bestScore: number
@@ -70,7 +72,7 @@ export default function GameOverScreen({ score, bestScore, isNewBest, onRetry, o
 
       <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
         <button
-          onClick={onRetry}
+          onClick={() => { playSelect(); onRetry() }}
           style={{
             padding: '11px 32px',
             fontSize: 16,
@@ -88,7 +90,7 @@ export default function GameOverScreen({ score, bestScore, isNewBest, onRetry, o
           RETRY
         </button>
         <button
-          onClick={onMenu}
+          onClick={() => { playSelect(); onMenu() }}
           style={{
             padding: '11px 32px',
             fontSize: 16,
