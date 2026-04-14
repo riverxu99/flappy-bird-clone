@@ -5,12 +5,13 @@ import BirdCounter from './components/BirdCounter'
 import StartScreen from './components/StartScreen'
 import GameOverScreen from './components/GameOverScreen'
 import { useGameStore } from './store/useGameStore'
+import { playDead } from './game/audio'
 
 const CANVAS_W = 400
 const CANVAS_H = 600
 
 export default function App() {
-  const { state, score, bestScore, muted, isNewBest, difficulty, birdCount, startGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
+  const { state, score, bestScore, muted, isNewBest, difficulty, birdCount, startGame, endGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
 
   return (
     <div style={{
@@ -25,6 +26,33 @@ export default function App() {
 
         <ScoreBoard score={score} bestScore={bestScore} visible={state === 'playing'} />
         <BirdCounter count={birdCount} visible={state === 'playing'} />
+
+        {state === 'playing' && (
+          <button
+            onClick={() => { endGame(); playDead() }}
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: 'none',
+              background: 'rgba(0,0,0,0.35)',
+              color: '#fff',
+              fontSize: 18,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 5,
+              lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+        )}
 
         {state === 'idle' && (
           <StartScreen bestScore={bestScore} difficulty={difficulty} onDifficulty={setDifficulty} onStart={startGame} />

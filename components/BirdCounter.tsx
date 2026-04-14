@@ -26,7 +26,7 @@ export default function BirdCounter({ count, visible }: Props) {
     <div style={{
       position: 'absolute',
       top: 10,
-      right: 10,
+      left: 10,
       display: 'flex',
       alignItems: 'center',
       gap: 5,

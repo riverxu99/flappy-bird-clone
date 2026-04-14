@@ -54,6 +54,7 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
     if (!loop) return
     if (state === 'playing') loop.start(difficulty)
     if (state === 'idle') loop.pause()
+    if (state === 'dead') loop.stop()
   }, [state, difficulty])
 
   useEffect(() => {
