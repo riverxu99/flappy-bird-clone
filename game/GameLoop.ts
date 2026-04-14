@@ -61,9 +61,6 @@ export class GameLoop {
   private score = 0
   private currentSpeed = PIPE_SPEED
 
-  // --- Previous pipe reference (independent of pipes array for high-speed dot spawning) ---
-  private prevPipeInfo: { topHeight: number; yOffset: number; x: number } | null = null
-
   // --- Bird queue ---
   private birdQueue = 1              // total birds alive (leader + followers)
   private posHistory: number[] = []  // y-position history of the leader
@@ -277,7 +274,6 @@ export class GameLoop {
     this.dead = false
     this.score = 0
     this.currentSpeed = PIPE_SPEED
-    this.prevPipeInfo = null
 
     // Reset bird queue
     this.birdQueue = 1
@@ -326,27 +322,15 @@ export class GameLoop {
     this.posHistory.push(this.bird.y)
     if (this.posHistory.length > MAX_HISTORY) this.posHistory.shift()
 
-    // Track previous pipe position independently (survives the pipes array filter)
-    if (this.prevPipeInfo) this.prevPipeInfo.x -= this.currentSpeed
-
     // --- Spawn pipes ---
     if (now - this.lastPipeTime > PIPE_SPAWN_INTERVAL) {
-      // Dot at the midpoint between prev pipe and this new one.
-      // Uses prevPipeInfo so it works even at high speed when prev pipe is off-screen.
-      if (this.prevPipeInfo !== null) {
-        const rawMidX = (this.W + this.prevPipeInfo.x) / 2
-        // Guarantee enough lead time for the player to react at any speed
-        const dotX = Math.max(BIRD_X + this.currentSpeed * 40, rawMidX)
-        this.spawnDotAt(dotX, this.prevPipeInfo)
-      }
-
       const pipe = createPipe(this.W, this.H - GROUND_HEIGHT, this.pipeIdCounter++, this.difficulty === 'hard')
       this.pipes.push(pipe)
       const g = this.drawPipe(pipe)
       this.pipeGraphics.set(pipe.id, g)
       this.pipeContainer.addChild(g)
       this.lastPipeTime = now
-      this.prevPipeInfo = { topHeight: pipe.topHeight, yOffset: 0, x: this.W }
+      this.spawnDotAt(this.W + PIPE_WIDTH / 2, pipe)
     }
 
     // --- Update pipes ---
