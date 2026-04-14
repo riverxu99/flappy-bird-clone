@@ -13,7 +13,7 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const loopRef = useRef<GameLoop | null>(null)
-  const { state, addScore, endGame, startGame, retryGame, difficulty, muted, setBirdCount } = useGameStore()
+  const { state, addScore, endGame, startGame, retryGame, difficulty, muted, setBirdCount, addCoinBonus } = useGameStore()
   const stateRef = useRef(state)
   stateRef.current = state
 
@@ -40,6 +40,7 @@ export default function GameCanvas({ width = 400, height = 600 }: Props) {
       playHit,
       playPickup,
       setBirdCount,
+      addCoinBonus,
     )
     loopRef.current = loop
 

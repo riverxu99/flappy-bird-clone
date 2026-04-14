@@ -11,7 +11,7 @@ const CANVAS_W = 400
 const CANVAS_H = 600
 
 export default function App() {
-  const { state, score, bestScore, muted, isNewBest, difficulty, birdCount, startGame, endGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
+  const { state, score, bestScore, muted, isNewBest, difficulty, birdCount, coinBonusSeq, startGame, endGame, retryGame, goMenu, toggleMute, setDifficulty } = useGameStore()
 
   return (
     <div style={{
@@ -24,7 +24,7 @@ export default function App() {
       <div style={{ position: 'relative', width: CANVAS_W, height: CANVAS_H, overflow: 'hidden', borderRadius: 12 }}>
         <GameCanvas width={CANVAS_W} height={CANVAS_H} />
 
-        <ScoreBoard score={score} bestScore={bestScore} visible={state === 'playing'} />
+        <ScoreBoard score={score} bestScore={bestScore} visible={state === 'playing'} coinBonusSeq={coinBonusSeq} />
         <BirdCounter count={birdCount} visible={state === 'playing'} />
 
         {state === 'playing' && (

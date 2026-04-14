@@ -25,6 +25,6 @@ export function flapBird(bird: BirdState): BirdState {
 }
 
 export function isBirdOutOfBounds(bird: BirdState, canvasHeight: number): boolean {
-  const r = BIRD_SIZE / 2
-  return bird.y - r < 0 || bird.y + r > canvasHeight
+  const ry = BIRD_SIZE / 2 - 2  // match visual ellipse ry
+  return bird.y - ry < 0 || bird.y + ry > canvasHeight
 }

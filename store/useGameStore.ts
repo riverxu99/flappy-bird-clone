@@ -11,9 +11,11 @@ interface GameStore {
   isNewBest: boolean
   difficulty: Difficulty
   birdCount: number
+  coinBonusSeq: number
   startGame: () => void
   endGame: () => void
   addScore: () => void
+  addCoinBonus: () => void
   retryGame: () => void
   goMenu: () => void
   toggleMute: () => void
@@ -36,6 +38,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isNewBest: false,
   difficulty: 'easy',
   birdCount: 1,
+  coinBonusSeq: 0,
 
   startGame: () => set({ state: 'playing', score: 0, isNewBest: false, birdCount: 1 }),
 
@@ -47,6 +50,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   addScore: () => set((s) => ({ score: s.score + 1 })),
+
+  addCoinBonus: () => set((s) => ({ coinBonusSeq: s.coinBonusSeq + 1 })),
 
   retryGame: () => set({ state: 'playing', score: 0, isNewBest: false, birdCount: 1 }),
 

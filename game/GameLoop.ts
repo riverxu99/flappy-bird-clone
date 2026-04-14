@@ -24,7 +24,7 @@ const BIRD_BEAK = 0xe07820
 const FOLLOWER_GAP = 32        // horizontal px between each bird in the chain
 const SPACING_FRAMES = 11      // how many frames behind each follower trails
 const MAX_HISTORY = 280        // max entries in position history ring buffer
-const INVINCIBLE_FRAMES = 180  // ~3s of invincibility after a hit
+const INVINCIBLE_FRAMES = 120  // ~2s of invincibility after a hit
 
 // Dot settings — one dot per pipe gap, placed at the horizontal midpoint
 const DOT_RADIUS = 7
@@ -83,6 +83,7 @@ export class GameLoop {
   private onHit?: () => void
   private onPickup?: () => void
   private onBirdCountChange?: (n: number) => void
+  private onCoinBonus?: () => void
 
   constructor(
     app: Application,
@@ -91,19 +92,21 @@ export class GameLoop {
     onHit?: () => void,
     onPickup?: () => void,
     onBirdCountChange?: (n: number) => void,
+    onCoinBonus?: () => void,
   ) {
     this.app = app
     this.onScore = () => {
       onScore()
       this.score++
       if (this.score % 5 === 0) {
-        this.currentSpeed = Math.min(this.currentSpeed + 0.5, 10)
+        this.currentSpeed = Math.min(this.currentSpeed + 1.0, 10)
       }
     }
     this.onDead = onDead
     this.onHit = onHit
     this.onPickup = onPickup
     this.onBirdCountChange = onBirdCountChange
+    this.onCoinBonus = onCoinBonus
     this.buildScene()
   }
 
@@ -365,6 +368,13 @@ export class GameLoop {
         hit = true
       }
       if (hit) {
+        // Clamp bird to play area boundaries before freezing,
+        // so high-velocity impacts don't visually penetrate the ground/ceiling.
+        const ry = BIRD_SIZE / 2 - 2
+        const clampedY = Math.max(ry, Math.min(this.bird.y, (this.H - GROUND_HEIGHT) - ry))
+        this.birdGfx.x = BIRD_X
+        this.birdGfx.y = clampedY
+        this.birdGfx.rotation = (this.bird.rotation * Math.PI) / 180
         this.handleHit()
         return
       }
@@ -399,7 +409,12 @@ export class GameLoop {
       if (Math.sqrt(dx * dx + dy * dy) < DOT_RADIUS + BIRD_SIZE / 2) {
         toRemove.push(dot.id)
         this.onPickup?.()
-        this.addFollower()
+        if (this.birdQueue >= 5) {
+          this.onScore()
+          this.onCoinBonus?.()
+        } else {
+          this.addFollower()
+        }
       } else if (dot.x < -20) {
         toRemove.push(dot.id)
       }
