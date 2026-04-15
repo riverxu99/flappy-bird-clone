@@ -13,9 +13,9 @@ export function createBird(canvasHeight: number): BirdState {
   return { y: canvasHeight / 2, vy: 0, rotation: 0 }
 }
 
-export function updateBird(bird: BirdState): BirdState {
-  const vy = bird.vy + GRAVITY
-  const y = bird.y + vy
+export function updateBird(bird: BirdState, delta = 1): BirdState {
+  const vy = bird.vy + GRAVITY * delta
+  const y = bird.y + (bird.vy + vy) / 2 * delta
   const rotation = Math.min(Math.max(vy * 3, -25), 70)
   return { y, vy, rotation }
 }

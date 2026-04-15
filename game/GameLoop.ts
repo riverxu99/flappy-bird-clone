@@ -319,11 +319,11 @@ export class GameLoop {
     }
   }
 
-  private tick = (_delta: number) => {
+  private tick = (delta: number) => {
     if (!this.running) return
     const now = performance.now()
 
-    this.bird = updateBird(this.bird)
+    this.bird = updateBird(this.bird, delta)
 
     // Record leader y in history
     this.posHistory.push(this.bird.y)
@@ -342,7 +342,7 @@ export class GameLoop {
 
     // --- Update pipes ---
     const removed: number[] = []
-    this.pipes = updatePipes(this.pipes, this.currentSpeed)
+    this.pipes = updatePipes(this.pipes, this.currentSpeed, delta)
     this.pipeGraphics.forEach((g, id) => {
       const pipe = this.pipes.find((p) => p.id === id)
       if (!pipe) { this.pipeContainer.removeChild(g); removed.push(id) }
@@ -379,7 +379,7 @@ export class GameLoop {
         return
       }
     } else {
-      this.invincibleTimer++
+      this.invincibleTimer += delta
       const groundY = (this.H - GROUND_HEIGHT) - BIRD_SIZE / 2
       if (this.invincibleTimer >= INVINCIBLE_FRAMES) {
         this.invincible = false
@@ -399,7 +399,7 @@ export class GameLoop {
     // --- Update and collect dots ---
     const toRemove: number[] = []
     for (const dot of this.dots) {
-      dot.x -= this.currentSpeed
+      dot.x -= this.currentSpeed * delta
       const gfx = this.dotGfxMap.get(dot.id)
       if (gfx) gfx.x = dot.x
 
@@ -428,7 +428,7 @@ export class GameLoop {
 
     // --- Update clouds ---
     this.clouds.forEach((cloud, i) => {
-      cloud.x -= cloud.speed
+      cloud.x -= cloud.speed * delta
       const gfx = this.cloudGfx.children[i] as Graphics
       if (gfx) gfx.x = cloud.x
       if (cloud.x < -100) {
@@ -440,9 +440,9 @@ export class GameLoop {
     // --- Animate falling ejected birds ---
     const groundLine = this.H - GROUND_HEIGHT
     this.fallingBirds = this.fallingBirds.filter(fb => {
-      fb.vy += FALL_GRAVITY
-      fb.y += fb.vy
-      fb.rot += 0.12
+      fb.vy += FALL_GRAVITY * delta
+      fb.y += fb.vy * delta
+      fb.rot += 0.12 * delta
       fb.gfx.y = fb.y
       fb.gfx.rotation = fb.rot
       if (fb.y + BIRD_SIZE / 2 > groundLine || fb.y > this.H + 60) {

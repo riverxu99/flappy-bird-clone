@@ -28,13 +28,13 @@ export function createPipe(
   return { id, x: canvasWidth, topHeight, yOffset: 0, ySpeed, scored: false }
 }
 
-export function updatePipes(pipes: Pipe[], speed = PIPE_SPEED): Pipe[] {
+export function updatePipes(pipes: Pipe[], speed = PIPE_SPEED, delta = 1): Pipe[] {
   return pipes
     .map((p) => {
-      const x = p.x - speed
+      const x = p.x - speed * delta
       let { yOffset, ySpeed } = p
       if (ySpeed !== 0) {
-        yOffset += ySpeed
+        yOffset += ySpeed * delta
         const maxOffset = 60
         if (Math.abs(yOffset) >= maxOffset) {
           ySpeed = -ySpeed
