@@ -136,6 +136,7 @@ export class GameLoop {
     this.app.stage.addChild(this.followerContainer)
 
     this.birdGfx = this.makeBirdGfx()
+    this.birdGfx.visible = false
     this.app.stage.addChild(this.birdGfx)
 
     // Falling birds render above everything so they fall through ground visually
